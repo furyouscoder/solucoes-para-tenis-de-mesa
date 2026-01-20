@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Pong - Mobile First</title>
+    <style>
+        :root {
+            --primary: #2196f3;
+            --success: #4caf50;
+            --danger: #f44336;
+            --gray: #607d8b;
+            --bg: #f0f2f5;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            margin: 0;
+        }
+
+        /* Banner Próximo Jogador */
+        .proximo-container {
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin: 10px 0 20px 0;
+            border-left: 8px solid var(--success);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+        .proximo-container h1 { margin: 0; font-size: 1.1rem; color: #555; }
+        #nomeProximo { color: var(--success); font-weight: bold; display: block; font-size: 1.4rem; margin-top: 5px; }
+
+        /* Container Principal: Coluna no Mobile, Linha no Desktop */
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container { flex-direction: row; align-items: flex-start; }
+        }
+
+        .column {
+            flex: 1;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        h2 { text-align: center; color: #333; font-size: 1.2rem; margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+
+        /* Listas com itens maiores para toque */
+        ul { list-style: none; padding: 0; min-height: 120px; background: #fafafa; border-radius: 8px; overflow: hidden; }
+        li {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            font-size: 1.05rem;
+        }
+        li.selected { background-color: #e3f2fd; border-left: 5px solid var(--primary); font-weight: bold; }
+
+        /* Controles e Botões */
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        button {
+            width: 100%;
+            min-height: 48px; /* Recomendado para mobile */
+            padding: 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: active 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+
+        .btn-add { background-color: var(--success); color: white; }
+        .btn-play { background-color: var(--primary); color: white; }
+        .btn-remove { background-color: var(--gray); color: white; }
+        .btn-finish { background-color: var(--danger); color: white; }
+        button:disabled { background-color: #ccc; color: #888; cursor: not-allowed; }
+
+        /* Modal Responsivo */
+        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); }
+        .modal-content {
+            background-color: white;
+            margin: 20% auto;
+            padding: 25px;
+            border-radius: 15px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+        }
+        input { width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="proximo-container">
+    <h1>Próximo jogador: <span id="nomeProximo">Ninguém na fila</span></h1>
+</div>
+
+<div class="container">
+    <div class="column">
+        <h2>Fila de Espera</h2>
+        <ul id="listaEspera"></ul>
+        <div class="controls">
+            <button class="btn-play" onclick="iniciarPartida()">Próximo da Fila ➔</button>
+            <button class="btn-add" onclick="abrirModal()">(+) Novo Jogador</button>
+
+            <button class="btn-remove" id="btnExcluirEspera" onclick="excluirDaEspera()" disabled>(-) Excluir Jogador</button>
+        </div>
+    </div>
+
+    <div class="column">
+        <h2>Jogando Agora</h2>
+        <ul id="listaJogando"></ul>
+        <div class="controls">
+            <button class="btn-finish" onclick="finalizarPartida()">Voltar p/ Fila</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalAdd" class="modal">
+    <div class="modal-content">
+        <h3>Novo Jogador</h3>
+        <input type="text" id="nomeJogador" placeholder="Nome do atleta" autocomplete="off">
+        <button class="btn-add" onclick="adicionarJogador()">Confirmar</button>
+        <button onclick="fecharModal()" style="background:none; color: #888; margin-top: 10px;">Cancelar</button>
+    </div>
+</div>
+
+<script>
+    let espera = [];
+    let jogando = [];
+    let selecionadoEsperaIdx = null;
+    let selecionadoJogandoIdx = null;
+
+    function renderizar() {
+        const ulEspera = document.getElementById('listaEspera');
+        const ulJogando = document.getElementById('listaJogando');
+        const spanProximo = document.getElementById('nomeProximo');
+        const btnExcluir = document.getElementById('btnExcluirEspera');
+
+        spanProximo.innerText = espera.length > 0 ? espera[0] : "Ninguém na fila";
+
+        ulEspera.innerHTML = espera.map((nome, index) => `
+            <li class="${selecionadoEsperaIdx === index ? 'selected' : ''}" onclick="selecionarEspera(${index})">
+                ${index + 1}. ${nome}
+            </li>
+        `).join('');
+
+        ulJogando.innerHTML = jogando.map((nome, index) => `
+            <li class="${selecionadoJogandoIdx === index ? 'selected' : ''}" onclick="selecionarJogando(${index})">
+                🏓 ${nome}
+            </li>
+        `).join('');
+
+        btnExcluir.disabled = selecionadoEsperaIdx === null;
+    }
+
+    function selecionarEspera(index) {
+        selecionadoEsperaIdx = (selecionadoEsperaIdx === index) ? null : index;
+        renderizar();
+    }
+
+    function selecionarJogando(index) {
+        selecionadoJogandoIdx = (selecionadoJogandoIdx === index) ? null : index;
+        renderizar();
+    }
+
+    function adicionarJogador() {
+        const input = document.getElementById('nomeJogador');
+        const nome = input.value.trim();
+        if (nome) {
+            espera.push(nome);
+            input.value = '';
+            fecharModal();
+            renderizar();
+        }
+    }
+
+    function excluirDaEspera() {
+        if (selecionadoEsperaIdx !== null) {
+            espera.splice(selecionadoEsperaIdx, 1);
+            selecionadoEsperaIdx = null;
+            renderizar();
+        }
+    }
+
+    function iniciarPartida() {
+        if (espera.length > 0) {
+            const jogador = espera.shift();
+            jogando.push(jogador);
+            selecionadoEsperaIdx = null;
+            renderizar();
+        }
+    }
+
+    function finalizarPartida() {
+        if (selecionadoJogandoIdx !== null) {
+            const jogador = jogando.splice(selecionadoJogandoIdx, 1)[0];
+            espera.push(jogador);
+            selecionadoJogandoIdx = null;
+            renderizar();
+        } else {
+            alert("Toque em um jogador na lista 'Jogando' para finalizar.");
+        }
+    }
+
+    function abrirModal() {
+        document.getElementById('modalAdd').style.display = 'block';
+        setTimeout(() => document.getElementById('nomeJogador').focus(), 100);
+    }
+    function fecharModal() { document.getElementById('modalAdd').style.display = 'none'; }
+
+    // Fecha modal clicando fora dele
+    window.onclick = function(event) {
+        let modal = document.getElementById('modalAdd');
+        if (event.target == modal) fecharModal();
+    }
+</script>
+
+</body>
+</html>

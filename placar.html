@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Placar Tênis de Mesa - Edição Corrigível</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e74c3c;
+            --bg: #eceff1;
+            --success: #27ae60;
+            --info: #2980b9;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container { width: 100%; max-width: 900px; padding: 10px; }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-orientation: portrait) {
+            .game-grid { grid-template-columns: 1fr; }
+        }
+
+        .player-card {
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 4px solid transparent;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .player-card.serving { border-color: var(--accent); background: #fff8f8; }
+        .player-card.winner { border-color: var(--success); background: #f0fff4; }
+
+        .player-name { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+        .sets-count { font-size: 1rem; color: #666; }
+
+        .points {
+            font-size: clamp(4rem, 15vw, 7rem);
+            font-weight: 900;
+            line-height: 1;
+            margin: 10px 0;
+        }
+
+        .btn-group-main { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+
+        .btn-add {
+            width: 100%;
+            max-width: 150px;
+            padding: 15px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #1e8449;
+        }
+
+        .btn-add:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #1e8449; }
+
+        .secondary-btns { display: flex; gap: 5px; width: 100%; justify-content: center; }
+
+        .btn-small {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-sub { background: #95a5a6; box-shadow: 0 3px 0 #7f8c8d; }
+        .btn-sub:active { transform: translateY(2px); box-shadow: 0 1px 0 #7f8c8d; }
+        .btn-timeout { background: #f39c12; }
+        .btn-serve-init { background: var(--info); width: 100%; margin-top: 10px; }
+
+        #timer-display {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            height: 35px;
+        }
+
+        .footer { margin-top: 15px; text-align: center; }
+
+        .btn-action {
+            width: 100%;
+            max-width: 250px;
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; background: white; }
+        th, td { padding: 8px; border: 1px solid #ddd; text-align: center; }
+
+        .hidden { display: none !important; }
+        button:disabled { background: #ccc !important; box-shadow: none !important; cursor: not-allowed; opacity: 0.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup" class="player-card" style="max-width: 400px; margin: 20px auto;">
+        <h2 style="margin-bottom:15px">Novo Jogo</h2>
+        <input type="text" id="p1-in" placeholder="Jogador 1" style="padding:12px; margin-bottom:10px; border: 1px solid #ddd; border-radius: 8px;">
+        <input type="text" id="p2-in" placeholder="Jogador 2" style="padding:12px; margin-bottom:10px; border: 1px solid #ddd; border-radius: 8px;">
+        <button class="btn-action" style="max-width:none;" onclick="startGame()">Iniciar Partida</button>
+    </div>
+
+    <div id="game-area" class="hidden">
+        <div id="timer-display"></div>
+
+        <div class="game-grid">
+            <div id="card-1" class="player-card">
+                <div>
+                    <div class="player-name" id="n1-disp">J1</div>
+                    <div class="sets-count" id="s1-disp">Sets: 0</div>
+                    <div id="serve-1" style="color:var(--accent); font-weight:bold; visibility:hidden">SAQUE 🏓</div>
+                </div>
+                <div class="points" id="p1-disp">0</div>
+                <div class="btn-group-main">
+                    <button class="btn-add score-add-btn" onclick="changePoints(1, 1)">+</button>
+                    <div class="secondary-btns">
+                        <button class="btn-small btn-sub" onclick="changePoints(1, -1)">- CORRIGIR</button>
+                        <button id="t1-btn" class="btn-small btn-timeout" onclick="startTimeout(1)">TEMPO</button>
+                    </div>
+                </div>
+                <button id="i1-btn" class="btn-small btn-serve-init" onclick="setFirstServer(1)">Inicia Sacando</button>
+            </div>
+
+            <div id="card-2" class="player-card">
+                <div>
+                    <div class="player-name" id="n2-disp">J2</div>
+                    <div class="sets-count" id="s2-disp">Sets: 0</div>
+                    <div id="serve-2" style="color:var(--accent); font-weight:bold; visibility:hidden">SAQUE 🏓</div>
+                </div>
+                <div class="points" id="p2-disp">0</div>
+                <div class="btn-group-main">
+                    <button class="btn-add score-add-btn" onclick="changePoints(2, 1)">+</button>
+                    <div class="secondary-btns">
+                        <button class="btn-small btn-sub" onclick="changePoints(2, -1)">- CORRIGIR</button>
+                        <button id="t2-btn" class="btn-small btn-timeout" onclick="startTimeout(2)">TEMPO</button>
+                    </div>
+                </div>
+                <button id="i2-btn" class="btn-small btn-serve-init" onclick="setFirstServer(2)">Inicia Sacando</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button id="btn-finish-set" class="btn-action hidden" onclick="closeSet()">Registrar e Iniciar Próximo Set</button>
+            <table id="history-table">
+                <thead>
+                    <tr><th>Set</th><th id="h-n1">J1</th><th id="h-n2">J2</th></tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let p1 = { points: 0, sets: 0 };
+    let p2 = { points: 0, sets: 0 };
+    let currentSet = 1;
+    let initialServerOfSet = null;
+    let server = null;
+
+    function startGame() {
+        const n1 = document.getElementById('p1-in').value || "J1";
+        const n2 = document.getElementById('p2-in').value || "J2";
+        document.getElementById('n1-disp').innerText = n1;
+        document.getElementById('n2-disp').innerText = n2;
+        document.getElementById('h-n1').innerText = n1;
+        document.getElementById('h-n2').innerText = n2;
+        document.getElementById('setup').classList.add('hidden');
+        document.getElementById('game-area').classList.remove('hidden');
+    }
+
+    function setFirstServer(player) {
+        initialServerOfSet = player;
+        server = player;
+        document.getElementById('i1-btn').classList.add('hidden');
+        document.getElementById('i2-btn').classList.add('hidden');
+        render();
+    }
+
+    function changePoints(player, val) {
+        if (server === null) return;
+
+        if (player === 1) p1.points = Math.max(0, p1.points + val);
+        else p2.points = Math.max(0, p2.points + val);
+
+        updateServerLogic();
+        render();
+    }
+
+    function updateServerLogic() {
+        const total = p1.points + p2.points;
+        const isDeuce = (p1.points >= 10 && p2.points >= 10);
+        const switchEvery = isDeuce ? 1 : 2;
+
+        if (Math.floor(total / switchEvery) % 2 === 0) {
+            server = initialServerOfSet;
+        } else {
+            server = 3 - initialServerOfSet;
+        }
+    }
+
+    function startTimeout(player) {
+        document.getElementById(`t${player}-btn`).disabled = true;
+        let time = 60;
+        const timerDiv = document.getElementById('timer-display');
+        const count = setInterval(() => {
+            timerDiv.innerText = `TEMPO: ${time}s`;
+            if (time-- <= 0) { clearInterval(count); timerDiv.innerText = ""; }
+        }, 1000);
+    }
+
+    function closeSet() {
+        if (currentSet > 7) return;
+        const row = `<tr><td>${currentSet}</td><td>${p1.points}</td><td>${p2.points}</td></tr>`;
+        document.getElementById('history-body').innerHTML += row;
+
+        if (p1.points > p2.points) p1.sets++; else p2.sets++;
+
+        initialServerOfSet = 3 - initialServerOfSet;
+        server = initialServerOfSet;
+        p1.points = 0; p2.points = 0;
+        currentSet++;
+        render();
+    }
+
+    function render() {
+        // Regras de Vitória
+        const p1Wins = (p1.points >= 11 && (p1.points - p2.points >= 2));
+        const p2Wins = (p2.points >= 11 && (p2.points - p1.points >= 2));
+        const isFinished = p1Wins || p2Wins;
+
+        // Atualização de UI de Pontos e Sets
+        document.getElementById('p1-disp').innerText = p1.points;
+        document.getElementById('p2-disp').innerText = p2.points;
+        document.getElementById('s1-disp').innerText = `Sets: ${p1.sets}`;
+        document.getElementById('s2-disp').innerText = `Sets: ${p2.sets}`;
+
+        // Controle de Botões (Trava apenas o +)
+        document.querySelectorAll('.score-add-btn').forEach(btn => btn.disabled = isFinished);
+        document.getElementById('btn-finish-set').classList.toggle('hidden', !isFinished);
+
+        // Estilo visual
+        document.getElementById('card-1').classList.toggle('serving', server === 1 && !isFinished);
+        document.getElementById('card-2').classList.toggle('serving', server === 2 && !isFinished);
+        document.getElementById('card-1').classList.toggle('winner', p1Wins);
+        document.getElementById('card-2').classList.toggle('winner', p2Wins);
+
+        document.getElementById('serve-1').style.visibility = (server === 1 && !isFinished) ? 'visible' : 'hidden';
+        document.getElementById('serve-2').style.visibility = (server === 2 && !isFinished) ? 'visible' : 'hidden';
+    }
+</script>
+</body>
+</html>

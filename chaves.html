@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Torneio Pro - Relatório Final</title>
+    <style>
+        :root { --primary: #2563eb; --danger: #ef4444; --success: #059669; --bg: #f1f5f9; --white: #ffffff; --secondary: #64748b; --accent: #7c3aed; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #1e293b; margin: 0; }
+
+        /* Estilos de Impressão */
+        @media print {
+            .tabs, .btn, .config-bar, .input-set, .btn-next { display: none !important; }
+            .tab-content { display: block !important; box-shadow: none !important; padding: 0 !important; }
+            body { background: white; }
+            .no-print { display: none !important; }
+        }
+
+        .tabs { display: flex; gap: 5px; margin-bottom: -1px; padding-left: 20px; overflow-x: auto; border-bottom: 1px solid #e2e8f0; }
+        .tab-btn { padding: 12px 20px; border: 1px solid #e2e8f0; border-bottom: none; background: #e2e8f0; cursor: pointer; border-radius: 10px 10px 0 0; font-weight: 600; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background: var(--white); color: var(--primary); border-top: 4px solid var(--primary); }
+        .tab-content { display: none; background: var(--white); padding: 30px; border-radius: 0 15px 15px 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); min-height: 400px; }
+        .tab-content.active { display: block; }
+
+        .config-bar { display:flex; flex-wrap:wrap; gap:15px; align-items:center; background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:20px; border: 1px solid #e2e8f0; }
+        .chave-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .chave-card { background: white; border: 1px solid #e2e8f0; border-top: 5px solid var(--primary); padding: 15px; border-radius: 12px; }
+
+        .mata-mata-container { display: flex; flex-direction: column; gap: 12px; max-width: 550px; margin: 0 auto; }
+        .jogo-eliminatorio { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+        .input-set { width: 45px; padding: 5px; text-align: center; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-next { background: var(--accent); color: white; width: 100%; margin-top: 15px; }
+
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .report-table th, .report-table td { border: 1px solid #cbd5e1; padding: 12px; text-align: left; }
+        .report-table th { background: #f8fafc; }
+
+        .classificado-tag { background:#dcfce7; color:#166534; padding:2px 8px; border-radius:10px; font-size: 0.8em; font-weight: bold; margin-right: 5px; display: inline-block; }
+        .inscritos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .inscrito-card { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+
+    <div id="tabs-header" class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'aba-manutencao')">1. Jogadores</button>
+        <button class="tab-btn" onclick="openTab(event, 'aba-torneio')">2. Chaves</button>
+    </div>
+
+    <div id="aba-manutencao" class="tab-content active">
+        <div style="display:flex; gap:10px; margin-bottom:20px">
+            <input type="text" id="nomeJogador" style="flex:1; padding:12px; border-radius:8px; border:1px solid #cbd5e1" placeholder="Nome do jogador...">
+            <button class="btn btn-primary" onclick="adicionarJogador()">Incluir</button>
+            <button class="btn" style="background:#cbd5e1" onclick="adicionarByeManual()">+ Bye</button>
+        </div>
+        <p><strong>Total de Inscritos: <span id="countJogadores">0</span></strong></p>
+        <div id="listaInscritos" class="inscritos-grid"></div>
+    </div>
+
+    <div id="aba-torneio" class="tab-content">
+        <div class="config-bar">
+            <label>Jogadores/Chave: <input type="number" id="tamChave" value="4" min="2" class="input-set"></label>
+            <label>Classificados: <input type="number" id="qtdClass" value="2" min="1" max="2" class="input-set"></label>
+            <button class="btn btn-success" onclick="sortearChaves()">SORTEAR CHAVES</button>
+            <button class="btn" style="background: #7c3aed; color:white" onclick="iniciarEliminatorias()">GERAR ELIMINATÓRIAS</button>
+        </div>
+        <div id="resultado" class="chave-container"></div>
+    </div>
+
+    <div id="dynamic-tabs"></div>
+
+    <script>
+        let jogadores = [];
+        let chavesData = [];
+        let faseContador = 3;
+
+        function openTab(evt, tabName) {
+            const contents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
+            const buttons = document.getElementsByClassName("tab-btn");
+            for (let i = 0; i < buttons.length; i++) buttons[i].classList.remove("active");
+            document.getElementById(tabName).classList.add("active");
+            if(evt) evt.currentTarget.classList.add("active");
+        }
+
+        function adicionarJogador() {
+            const input = document.getElementById('nomeJogador');
+            const nome = input.value.trim();
+            if (nome && !jogadores.includes(nome)) {
+                jogadores.push(nome);
+                atualizarInterfaceInscritos();
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function adicionarByeManual() {
+            jogadores.push("Bye");
+            atualizarInterfaceInscritos();
+        }
+
+        function removerJogador(i) {
+            jogadores.splice(i, 1);
+            atualizarInterfaceInscritos();
+        }
+
+        function atualizarInterfaceInscritos() {
+            jogadores.sort((a, b) => a === "Bye" ? 1 : b === "Bye" ? -1 : a.localeCompare(b));
+            document.getElementById('countJogadores').innerText = jogadores.length;
+            const container = document.getElementById('listaInscritos');
+            container.innerHTML = jogadores.map((n, i) => `
+                <div class="inscrito-card"><span>${n}</span><button class="btn" style="color:var(--danger); padding:0" onclick="removerJogador(${i})">✖</button></div>
+            `).join('');
+        }
+
+        function sortearChaves() {
+            const tamChave = parseInt(document.getElementById('tamChave').value);
+            const container = document.getElementById('resultado');
+            container.innerHTML = '';
+            chavesData = [];
+            if (jogadores.length < 2) return alert("Adicione pelo menos 2 jogadores!");
+            const numChaves = jogadores.length <= 4 * tamChave ? 4 : (jogadores.length <= 8 * tamChave ? 8 : 16);
+            const totalVagas = numChaves * tamChave;
+            let lista = [...jogadores];
+            while (lista.length < totalVagas) lista.push("Bye");
+            lista.sort(() => Math.random() - 0.5);
+            let grupos = Array.from({ length: numChaves }, () => []);
+            let reais = lista.filter(n => n !== "Bye");
+            let byes = lista.filter(n => n === "Bye");
+            let idx = 0;
+            reais.forEach(p => { grupos[idx].push(p); idx = (idx + 1) % numChaves; });
+            grupos.forEach(g => { while (g.length < tamChave) g.push(byes.pop()); });
+            grupos.forEach((grupo, gIdx) => {
+                const data = { jogadores: grupo, jogos: gerarJogos(grupo), classificados: [] };
+                chavesData.push(data);
+                const divChave = document.createElement('div');
+                divChave.className = 'chave-card';
+                divChave.id = `card-chave-${gIdx}`;
+                container.appendChild(divChave);
+                renderizarChave(gIdx);
+            });
+        }
+
+        function gerarJogos(grupo) {
+            let jogos = [];
+            for (let i = 0; i < grupo.length; i++) {
+                for (let j = i + 1; j < grupo.length; j++) {
+                    let s1 = null, s2 = null;
+                    if (grupo[i] === "Bye" || grupo[j] === "Bye") { s1 = (grupo[i] === "Bye") ? 0 : 3; s2 = (grupo[j] === "Bye") ? 0 : 3; }
+                    jogos.push({ p1: grupo[i], p2: grupo[j], s1, s2 });
+                }
+            }
+            return jogos;
+        }
+
+        function renderizarChave(gIdx) {
+            const data = chavesData[gIdx];
+            const divChave = document.getElementById(`card-chave-${gIdx}`);
+            let html = `<h3>CHAVE ${gIdx + 1}</h3><table>`;
+            data.jogos.forEach((j, jIdx) => {
+                const dis = (j.p1 === "Bye" || j.p2 === "Bye") ? 'disabled' : '';
+                html += `<tr><td style="text-align:left; font-size:0.9em">${j.p1} x ${j.p2}</td>
+                <td><input type="number" min="0" class="input-set" value="${j.s1??''}" ${dis} oninput="atuPlacar(${gIdx},${jIdx},1,this.value)"></td>
+                <td><input type="number" min="0" class="input-set" value="${j.s2??''}" ${dis} oninput="atuPlacar(${gIdx},${jIdx},2,this.value)"></td></tr>`;
+            });
+            html += `</table><div id="class-info-${gIdx}" style="margin-top:10px; padding:10px; background:#f0fdf4; border-radius:8px; border:1px solid #bbf7d0"></div>`;
+            divChave.innerHTML = html;
+            calcClass(gIdx);
+        }
+
+        function atuPlacar(c, j, p, v) {
+            const val = v === "" ? null : Math.max(0, parseInt(v));
+            if (p === 1) chavesData[c].jogos[j].s1 = val; else chavesData[c].jogos[j].s2 = val;
+            calcClass(c);
+        }
+
+        function calcClass(c) {
+            const chave = chavesData[c];
+            const limite = Math.min(2, parseInt(document.getElementById('qtdClass').value));
+            let pts = {};
+            chave.jogadores.forEach(p => pts[p] = 0);
+            chave.jogos.forEach(j => {
+                if (j.s1 !== null && j.s2 !== null) {
+                    if (j.s1 > j.s2) pts[j.p1]++; else if (j.s2 > j.s1) pts[j.p2]++;
+                }
+            });
+            let rank = Object.entries(pts).filter(e => e[0] !== "Bye").sort((a,b) => b[1] - a[1]);
+            chave.classificados = rank.slice(0, limite).map(x => x[0]);
+            document.getElementById(`class-info-${c}`).innerHTML = `<strong>Classificados:</strong><br>${chave.classificados.map(n => `<span class="classificado-tag">${n}</span>`).join('')}`;
+        }
+
+        function iniciarEliminatorias() {
+            faseContador = 3;
+            document.getElementById('dynamic-tabs').innerHTML = '';
+            const header = document.getElementById('tabs-header');
+            while(header.children.length > 2) header.removeChild(header.lastChild);
+            let confrontos = [];
+            const limite = parseInt(document.getElementById('qtdClass').value);
+            for (let i = 0; i < chavesData.length; i += 2) {
+                const cA = chavesData[i];
+                const cB = chavesData[i+1];
+                if (limite === 1) { confrontos.push([cA.classificados[0] || "1º Chave "+(i+1), (cB ? cB.classificados[0] : "Bye")]); }
+                else {
+                    confrontos.push([cA.classificados[0] || "1º Chave "+(i+1), (cB ? (cB.classificados[1] || "2º Chave "+(i+2)) : "Bye")]);
+                    confrontos.push([cA.classificados[1] || "2º Chave "+(i+1), (cB ? (cB.classificados[0] || "1º Chave "+(i+2)) : "Bye")]);
+                }
+            }
+            gerarNovaAba("Eliminatórias", confrontos);
+        }
+
+        function gerarNovaAba(titulo, confrontos) {
+            const id = "fase-" + faseContador;
+            const btn = document.createElement('button');
+            btn.className = "tab-btn";
+            btn.innerText = (confrontos.length === 1) ? "Final" : (confrontos.length === 2) ? "Semi-Final" : titulo;
+            btn.onclick = (e) => openTab(e, id);
+            document.getElementById('tabs-header').appendChild(btn);
+            const content = document.createElement('div');
+            content.id = id;
+            content.className = "tab-content";
+            let html = `<h2>${btn.innerText}</h2><div class="mata-mata-container">`;
+            confrontos.forEach((conf, i) => {
+                const s1 = (conf[1] === "Bye") ? 3 : "";
+                const s2 = (conf[1] === "Bye") ? 0 : "";
+                const dis = (conf[1] === "Bye") ? "disabled" : "";
+                html += `<div class="jogo-eliminatorio" data-jogo="${i}">
+                    <span style="flex:1"><b>${conf[0]}</b></span>
+                    <input type="number" min="0" class="input-set p1-score" value="${s1}" ${dis}>
+                    <span>X</span>
+                    <input type="number" min="0" class="input-set p2-score" value="${s2}" ${dis}>
+                    <span style="flex:1; text-align:right"><b>${conf[1]}</b></span>
+                </div>`;
+            });
+            if(confrontos.length > 1) { html += `<button class="btn btn-next" onclick="avancarFase('${id}')">Gerar Próxima Fase</button>`; }
+            else { html += `<button class="btn btn-success" style="width:100%; margin-top:20px" onclick="finalizarTorneio('${id}')">Finalizar Torneio</button>`; }
+            content.innerHTML = html + `</div>`;
+            document.getElementById('dynamic-tabs').appendChild(content);
+            faseContador++;
+            btn.click();
+        }
+
+        function avancarFase(abaId) {
+            const container = document.getElementById(abaId);
+            const jogos = container.querySelectorAll('.jogo-eliminatorio');
+            let vencedores = [];
+            jogos.forEach(jogo => {
+                const s1 = parseInt(jogo.querySelector('.p1-score').value);
+                const s2 = parseInt(jogo.querySelector('.p2-score').value);
+                if (!isNaN(s1) && !isNaN(s2) && s1 !== s2) vencedores.push(s1 > s2 ? jogo.children[0].innerText : jogo.children[4].innerText);
+            });
+            if (vencedores.length !== jogos.length) return alert("Preencha todos os placares (sem empates)!");
+            let novosConfrontos = [];
+            for (let i = 0; i < vencedores.length; i += 2) { novosConfrontos.push([vencedores[i], vencedores[i+1] || "Bye"]); }
+            gerarNovaAba("Próxima Fase", novosConfrontos);
+        }
+
+        function finalizarTorneio(abaId) {
+            const container = document.getElementById(abaId);
+            const jogo = container.querySelector('.jogo-eliminatorio');
+            const s1 = parseInt(jogo.querySelector('.p1-score').value);
+            const s2 = parseInt(jogo.querySelector('.p2-score').value);
+
+            if (isNaN(s1) || isNaN(s2) || s1 === s2) return alert("Preencha o placar da final corretamente!");
+
+            const campeao = s1 > s2 ? jogo.children[0].innerText : jogo.children[4].innerText;
+            const vice = s1 > s2 ? jogo.children[4].innerText : jogo.children[0].innerText;
+
+            const idRelatorio = "aba-relatorio";
+            if(document.getElementById(idRelatorio)) document.getElementById(idRelatorio).remove();
+
+            const btn = document.createElement('button');
+            btn.className = "tab-btn";
+            btn.innerText = "📜 Resultado Final";
+            btn.onclick = (e) => openTab(e, idRelatorio);
+            document.getElementById('tabs-header').appendChild(btn);
+
+            const content = document.createElement('div');
+            content.id = idRelatorio;
+            content.className = "tab-content";
+
+            let dataHora = new Date().toLocaleString();
+            let html = `
+                <div style="text-align:center; border-bottom: 2px solid #2563eb; padding-bottom:10px; margin-bottom:20px;">
+                    <h1>RELATÓRIO FINAL DO TORNEIO</h1>
+                    <p>Data de emissão: ${dataHora}</p>
+                </div>
+                <table class="report-table">
+                    <thead><tr><th>Posição</th><th>Jogador</th></tr></thead>
+                    <tbody>
+                        <tr style="background:#fef3c7"><td><strong>🏆 CAMPEÃO</strong></td><td><strong>${campeao}</strong></td></tr>
+                        <tr style="background:#f1f5f9"><td>🥈 Vice-Campeão</td><td>${vice}</td></tr>
+                    </tbody>
+                </table>
+                <h3>Resumo das Chaves:</h3>
+                <table class="report-table">
+                    <thead><tr><th>Chave</th><th>Classificados</th></tr></thead>
+                    <tbody>
+                        ${chavesData.map((c, i) => `<tr><td>Chave ${i+1}</td><td>${c.classificados.join(', ') || '---'}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+                <div style="margin-top:30px;" class="no-print">
+                    <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir Resultado</button>
+                    <button class="btn" style="margin-left:10px; background:#64748b; color:white" onclick="location.reload()">🔄 Novo Torneio</button>
+                </div>
+            `;
+            content.innerHTML = html;
+            document.getElementById('dynamic-tabs').appendChild(content);
+            btn.click();
+        }
+    </script>
+</body>
+</html>
