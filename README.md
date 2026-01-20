@@ -12,6 +12,8 @@ O projeto consiste em ferramentas desenvolvidas em **HTML e JavaScript**, o que 
 * **Placar Eletrônico:** Um placar digital simples para acompanhar os pontos durante as partidas.
 * **Gestão de Torneios:** Ferramenta para organizar chaves e andamento de competições.
 
+🚀 **Confira o projeto em execução:** [furyouscoder.github.io/solucoes-para-tenis-de-mesa/](https://furyouscoder.github.io/solucoes-para-tenis-de-mesa/)
+
 ## 💡 Destaques do Projeto
 
 * **100% Gratuito:** Use à vontade, sem taxas ou assinaturas.
